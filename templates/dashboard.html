@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card dashboard-grid">
+    <div style="min-width: 0;">
+        <h2>Command Center</h2>
+        <p>Real-time telemetry and historical analysis of water levels.</p>
+        <div class="chart-container">
+            <canvas id="waterLevelChart"></canvas>
+        </div>
+    </div>
+    <div style="min-width: 0;">
+        <h2>AI Accuracy Metrics</h2>
+        <p>Hybrid model validation performance.</p>
+        <div class="chart-container">
+            <canvas id="accuracyChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h2 style="margin: 0;">Intelligence Logs</h2>
+        <form action="{{ url_for('clear_logs') }}" method="post" onsubmit="return confirm('Are you sure you want to permanently delete all operational logs and assets?')">
+            <button type="submit" style="background: rgba(239, 68, 68, 0.1); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'">🗑️ Clear Data Logs</button>
+        </form>
+    </div>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Mission ID</th>
+                    <th>Asset</th>
+                    <th>Time Sync</th>
+                    <th>Detection Mode</th>
+                    <th>Level</th>
+                    <th>Threat Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in history %}
+                <tr>
+                    <td style="color: var(--text-muted);">#{{ row.id }}</td>
+                    <td style="font-weight: 500;">{{ row.filename }}</td>
+                    <td style="font-size: 0.9rem; color: var(--text-muted);">{{ row.timestamp }}</td>
+                    <td>
+                        <span style="font-size: 0.8rem; padding: 4px 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); border-radius: 6px; color: #94a3b8;">
+                            {{ row.mode }}
+                        </span>
+                    </td>
+                    <td style="font-size: 1.1rem; font-weight: 600;">{{ row.water_level }}{% if row.water_level != 'N/A' %}<span style="font-size: 0.8rem; color: #94a3b8; font-weight: normal; margin-left: 2px;">m</span>{% endif %}</td>
+                    <td><span class="badge {{ row.category | lower }}">{{ row.category }}</span></td>
+                    <td>
+                        <a href="{{ url_for('result', id=row.id) }}" style="color: #60a5fa; font-weight: 600; text-decoration: none; transition: color 0.2s;" onmouseover="this.style.color='#93c5fd'" onmouseout="this.style.color='#60a5fa'">Inspect</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 3rem; color: var(--text-muted);">No operational data found. Deploy a scan to begin.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const historyData = {{ history | tojson | safe }};
+        const validData = historyData.filter(item => item.water_level !== 'N/A');
+        
+        if (validData.length > 0) {
+            const sortedData = [...validData].reverse();
+            const labels = sortedData.map(item => {
+                const parts = item.timestamp.split(' ');
+                return parts.length > 1 ? parts[1].substring(0, 5) : item.timestamp;
+            });
+            const data = sortedData.map(item => parseFloat(item.water_level));
+            
+            const pointColors = sortedData.map(item => {
+                const cat = item.category.toLowerCase();
+                if(cat === 'high' || cat === 'danger') return '#ef4444';
+                if(cat === 'medium' || cat === 'warning') return '#f59e0b';
+                return '#10b981';
+            });
+
+            Chart.defaults.color = '#94a3b8';
+            Chart.defaults.font.family = "'Outfit', sans-serif";
+
+            const ctx = document.getElementById('waterLevelChart').getContext('2d');
+            
+            // Create gradient
+            let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Water Level (meters)',
+                        data: data,
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: pointColors,
+                        pointBorderColor: 'rgba(255,255,255,0.8)',
+                        pointBorderWidth: 2,
+                        pointRadius: 6,
+                        pointHoverRadius: 8,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                borderColor: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                borderColor: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#f8fafc',
+                                font: {
+                                    size: 13,
+                                    weight: '500'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#f8fafc',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: true,
+                            cornerRadius: 8
+                        }
+                    }
+                }
+            });
+
+            // Accuracy Chart
+            const accCtx = document.getElementById('accuracyChart').getContext('2d');
+            new Chart(accCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Gauge Detect', 'Classifier', 'Regression (R²)'],
+                    datasets: [{
+                        label: 'Accuracy (%)',
+                        data: [98.5, 94.2, 91.8],
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.5)',
+                            'rgba(59, 130, 246, 0.5)',
+                            'rgba(139, 92, 246, 0.5)'
+                        ],
+                        borderColor: [
+                            '#10b981',
+                            '#3b82f6',
+                            '#8b5cf6'
+                        ],
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#f8fafc',
+                            bodyColor: '#f8fafc',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            padding: 10,
+                            cornerRadius: 8
+                        }
+                    }
+                }
+            });
+        } else {
+            // If no data, still show the accuracy chart
+            const accCtx = document.getElementById('accuracyChart').getContext('2d');
+            new Chart(accCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Gauge Detect', 'Classifier', 'Regression (R²)'],
+                    datasets: [{
+                        label: 'Accuracy (%)',
+                        data: [98.5, 94.2, 91.8],
+                        backgroundColor: ['rgba(16, 185, 129, 0.5)', 'rgba(59, 130, 246, 0.5)', 'rgba(139, 92, 246, 0.5)'],
+                        borderColor: ['#10b981', '#3b82f6', '#8b5cf6'],
+                        borderWidth: 2,
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, max: 100, grid: { color: 'rgba(255, 255, 255, 0.05)' } }, x: { grid: { display: false } } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

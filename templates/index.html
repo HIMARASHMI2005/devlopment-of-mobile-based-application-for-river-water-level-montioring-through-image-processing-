@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <h2>Initiate Analysis</h2>
+    <p>Deploy our advanced hybrid machine learning pipeline to analyze water gauge imagery in real-time.</p>
+    
+    <form action="{{ url_for('upload') }}" method="post" enctype="multipart/form-data">
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+            <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.8;">📸</div>
+            <p>Drag & drop your imagery here or click to browse</p>
+            <input type="file" id="fileInput" name="file" accept="image/*" style="display: none;" onchange="document.getElementById('fileName').innerText = this.files[0].name">
+            <p id="fileName" style="font-weight: 600; color: #60a5fa; margin-top: 15px; font-size: 1rem;"></p>
+        </div>
+        <div style="margin-top: 2rem; display: flex; justify-content: center;">
+            <button type="submit" class="btn">🚀 Process & Analyze</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

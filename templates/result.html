@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <h2>Analysis Complete</h2>
+    <p>Our hybrid neural network has successfully processed the imagery.</p>
+    
+    <div class="result-container" style="margin-top: 2rem;">
+        <div class="result-image-wrapper">
+            <img src="{{ url_for('static', filename='uploads/' + data.filename) }}" alt="Uploaded Image" class="result-image">
+        </div>
+        
+        <div class="result-details">
+            <div class="metric-box">
+                <div class="metric-label">Detected Mode</div>
+                <div style="font-size: 1.5rem; font-weight: 600; color: #60a5fa;">{{ data.mode }}</div>
+            </div>
+            
+            <div class="metric-box">
+                <div class="metric-label">Estimated Water Level</div>
+                <div class="metric-value">
+                    {{ data.water_level }}
+                    {% if data.water_level != 'N/A' %}<span class="metric-unit">meters</span>{% endif %}
+                </div>
+            </div>
+            
+            <div class="metric-box">
+                <div class="metric-label">System Status</div>
+                <div style="margin-top: 0.5rem;">
+                    <span class="badge {{ data.category | lower }}">{{ data.category }}</span>
+                </div>
+            </div>
+            
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Processed exactly at: {{ data.timestamp }}</p>
+            
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <a href="{{ url_for('index') }}" class="btn">New Scan</a>
+                <a href="{{ url_for('dashboard') }}" class="btn secondary">View Logs</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
